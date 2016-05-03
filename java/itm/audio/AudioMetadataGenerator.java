@@ -11,6 +11,15 @@ import itm.model.MediaFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Map;
+
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
+
+import com.sun.media.jfxmedia.track.Track.Encoding;
 
 /**
  * This class reads audio files of various formats and stores some basic audio
@@ -141,17 +150,104 @@ public class AudioMetadataGenerator {
 		// create an audio metadata object
 		AudioMedia media = (AudioMedia) MediaFactory.createMedia(input);		
 
-		// load the input audio file, do not decode
 
-		// read AudioFormat properties
+		try {
+			// load the input audio file, do not decode
+			AudioInputStream in = AudioSystem.getAudioInputStream(input);
+			
+			// read file-type specific properties
+			AudioFileFormat fAudioFormat = AudioSystem.getAudioFileFormat(input);
+			Map<String,Object> mapfAudioFormat = fAudioFormat.properties();
+			
+			//read generic properties
+			
+			if(mapfAudioFormat.get("duration") != null)
+				media.setDurationMicroS((Long)mapfAudioFormat.get("duration"));
+			
+			if(mapfAudioFormat.get("author") != null)
+				media.setAuthor((String)mapfAudioFormat.get("author"));
+			
+			if(mapfAudioFormat.get("title") != null)
+				media.setTitle((String)mapfAudioFormat.get("title"));
+			
+			if(mapfAudioFormat.get("album") != null)
+				media.setAlbum((String)mapfAudioFormat.get("album"));
+			
+			if(mapfAudioFormat.get("comment") != null)
+				media.setComment((String)mapfAudioFormat.get("comment"));
+			
+			if(mapfAudioFormat.get("date") != null)
+				media.setDate((String) mapfAudioFormat.get("date"));//test with Date TODO
+			
+			// you might have to distinguish what properties are available for what audio format
+			//determine what format does the file has
+			boolean isMp3 = false;
+			//not sure if needed TODO
+			boolean isOgg = false;
+			for (Map.Entry<String, Object> entry : mapfAudioFormat.entrySet())
+			{
+				if(entry.getKey().startsWith("mp3.")){
+					isMp3 = true;
+					break;
+				}
+				
+				if(entry.getKey().startsWith("ogg.")){
+					isOgg = true;
+					break;
+				}
+					
+			    //System.out.println(entry.getKey() + "/" + entry.getValue());
+			}
+			
+			
+			//read properties for mp3
+			if(isMp3){
+				if(mapfAudioFormat.get("mp3.id3tag.composer") != null)
+					media.setComposer((String) mapfAudioFormat.get("mp3.id3tag.composer"));
+				
+				if(mapfAudioFormat.get("mp3.id3tag.track") != null)
+					media.setTrack((String) mapfAudioFormat.get("mp3.id3tag.track"));
+				
+				if(mapfAudioFormat.get("mp3.id3tag.genre") != null)
+					media.setGenre((String) mapfAudioFormat.get("mp3.id3tag.genre"));
+				
+			}
+			
+			
+			// read AudioFormat properties
+			AudioFormat audioFormat = in.getFormat();
+			
+			media.setEncoding(audioFormat.getEncoding());
+			media.setChannels(audioFormat.getChannels());
+			media.setSampleRate(audioFormat.getSampleRate());
+			
+			if(audioFormat.getProperty("bitrate") != null)
+				media.setBitrate((Integer) audioFormat.getProperty("bitrate"));
+	
+			//Map<String,Object> mapAudioFormat = audioFormat.properties();
 
-		// read file-type specific properties
+			
+			//calculate duration for wav files
+			if(media.getEncoding() != null && (media.getEncoding() == AudioFormat.Encoding.PCM_SIGNED || media.getEncoding() == AudioFormat.Encoding.PCM_UNSIGNED)){
+				Integer duration = (int) (fAudioFormat.getByteLength() / audioFormat.getSampleRate() / (audioFormat.getSampleSizeInBits() / 8.0) / audioFormat.getChannels());
+				Integer minutes = (duration < 60) ? 0 : duration/60;
+				Integer seconds = duration % 60;
+				media.setDurationMinS(minutes + ":" + seconds);
+			}
+			
 
-		// you might have to distinguish what properties are available for what audio format
+			// add a "audio" tag
+			media.addTag("audio");
+			// close the audio and write the md file.
+			in.close();
+			media.writeToFile(outputFile);
+			
+			
+		} catch (UnsupportedAudioFileException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
-		// add a "audio" tag
-
-		// close the audio and write the md file.
 
 		return media;
 	}
