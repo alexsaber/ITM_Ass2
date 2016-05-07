@@ -10,6 +10,17 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.TargetDataLine;
+import javax.sound.sampled.UnsupportedAudioFileException;
+
+import com.sun.media.sound.WaveFileWriter;
+
 /**
  * 
  * This class creates acoustic thumbnails from various types of audio files. It
@@ -120,10 +131,40 @@ public class AudioThumbGenerator {
 		// ***************************************************************
 
 		// load the input audio file
-
+		
+		
+		AudioInputStream audioInput = null;
+		AudioInputStream decodedAudioInput = null;
+		AudioInputStream Thumbnail = null;
+		
+		try {
+			audioInput = AudioSystem.getAudioInputStream(input);
+		} catch (UnsupportedAudioFileException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		AudioFormat baseFormat = audioInput.getFormat();	
+		
+		AudioFormat decodedFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 
+                baseFormat.getSampleRate(),
+                16,
+                baseFormat.getChannels(),
+                baseFormat.getChannels() * 2,
+                baseFormat.getSampleRate(),
+                false);
+		
+		decodedAudioInput = AudioSystem.getAudioInputStream(decodedFormat, audioInput);
+		
 		// cut the audio data in the stream to a given length
-
+		
+		long dataThumb = thumbNailLength * (int)decodedFormat.getFrameRate();
+		
+		Thumbnail  =  new AudioInputStream(decodedAudioInput, decodedFormat, dataThumb);
+		
 		// save the acoustic thumbnail as WAV file
+		
+		WaveFileWriter wavWriter = new WaveFileWriter();
+		wavWriter.write(Thumbnail, AudioFileFormat.Type.WAVE, outputFile);
 
 		return outputFile;
 	}

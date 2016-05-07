@@ -137,10 +137,10 @@ public class AudioPlayer {
 		
 		// read samples from audio and write them to the data line 
 		int BUFFER_SIZE = 4096;
-		 
+		
 		byte[] bytesBuffer = new byte[BUFFER_SIZE];
 		int bytesRead = -1;
-		 
+		
 		while ((bytesRead = audio.read(bytesBuffer)) != -1) {
 		    audioLine.write(bytesBuffer, 0, bytesRead);
 		}
