@@ -141,17 +141,38 @@ public class VideoMetadataGenerator {
 		// ***************************************************************
 		// Fill in your code here!
 		// ***************************************************************
-		
-		
+		IContainer container = IContainer.make(); 
+        container.open(input.getAbsolutePath(), IContainer.Type.READ, null);
+        
 		// create video media object
 		VideoMedia media = (VideoMedia) MediaFactory.createMedia(input);
+		
 
 		// set video and audio stream metadata 
-		
+        for(int i = 0; i < container.getNumStreams(); ++i){
+        	IStream stream = container.getStream(i);
+            IStreamCoder streamCoder = stream.getStreamCoder();
+            
+            if(streamCoder.getCodecType()==Type.CODEC_TYPE_AUDIO){
+            	media.setAudioCodec(streamCoder.getCodecType());
+            	media.setAudioCodecID(streamCoder.getCodecID());
+            	media.setAudioChannels(streamCoder.getChannels());
+            	media.setAudioSampleRate(streamCoder.getSampleRate());
+            	media.setAudioBitRate(streamCoder.getBitRate());
+            }
+            else if(streamCoder.getCodecType()==Type.CODEC_TYPE_VIDEO){
+            	media.setVideoLength(stream.getDuration());
+                media.setVideoFrameRate(streamCoder.getFrameRate());
+                media.setVideoCodecID(streamCoder.getCodecID());
+                media.setVideoCodec(streamCoder.getCodecType());
+                media.setVideoWidth(streamCoder.getWidth());
+                media.setVideoHeight(streamCoder.getHeight());
+            }
+        }
 		// add video tag
-
+		media.addTag("video");
 		// write metadata
-		
+		media.writeToFile(outputFile);
 		return media;
 	}
 
