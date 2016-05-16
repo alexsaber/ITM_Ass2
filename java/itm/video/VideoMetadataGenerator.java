@@ -161,7 +161,7 @@ public class VideoMetadataGenerator {
             	media.setAudioBitRate(streamCoder.getBitRate());
             }
             else if(streamCoder.getCodecType()==Type.CODEC_TYPE_VIDEO){
-            	media.setVideoLength(stream.getDuration());
+            	media.setVideoLength((stream.getDuration()*stream.getTimeBase().getNumerator())/stream.getTimeBase().getDenominator());
                 media.setVideoFrameRate(streamCoder.getFrameRate());
                 media.setVideoCodecID(streamCoder.getCodecID());
                 media.setVideoCodec(streamCoder.getCodecType());

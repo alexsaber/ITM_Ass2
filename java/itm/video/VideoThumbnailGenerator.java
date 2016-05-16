@@ -7,6 +7,8 @@ package itm.video;
 
 import itm.util.ImageCompare;
 
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -188,11 +190,21 @@ public class VideoThumbnailGenerator {
         
         ArrayList<IVideoPicture> capturedFrames = new ArrayList<IVideoPicture>();
         
-        for (int timeToCapture = 0; timeToCapture < durationInS; timeToCapture = timeToCapture + timespan){
+        long time_stampToCapture = 0;
+        boolean lastFrame = false;
+        BufferedImage lastScreenshot = null;
+        
+        ArrayList<BufferedImage> list = new ArrayList<BufferedImage>();
+        //int counter = 0;
+        for (int timeToCapture = 0; timeToCapture < durationInS && !lastFrame; timeToCapture = timeToCapture + timespan){
+        	//System.out.println(counter++);
+        	lastFrame=true;
         	
-	        long time_stampToCapture = (timeBase.getDenominator() / timeBase.getNumerator()) * timeToCapture; 
+        	if(timespan!=0){
+        		time_stampToCapture = (timeBase.getDenominator() / timeBase.getNumerator()) * timeToCapture; 
+        	}
 	        
-	       System.out.println("time_stampToCapture " + time_stampToCapture); 
+	        
 	        //long target = container.getStartTime() + timeStampOffset; 
 	
 	        container.seekKeyFrame(theVidID, time_stampToCapture, 0); 
@@ -201,7 +213,7 @@ public class VideoThumbnailGenerator {
 	        
 	        IPacket packet = IPacket.make(); 
 	        while(container.readNextPacket(packet) >= 0 && !isFinished ) { 
-	        	System.out.println("inside while");
+	        	
 	
 	                if (packet.getStreamIndex() == theVidID) { 
 	                	
@@ -210,12 +222,12 @@ public class VideoThumbnailGenerator {
 	                    											theVidCoder.getHeight()); 
 	                    int offset = 0; 
 	                    while (offset < packet.getSize()) { 
-	                    	System.out.println("inside second while");
+	                    	
 	
 	                            int bytesDecoded = theVidCoder.decodeVideo(picture, packet, offset); 
 	                            if (bytesDecoded < 0) { 
 	                                    System.err.println("No video was decoded in the packet!"); 
-	                            } 
+	                            }
 	                            offset += bytesDecoded; 
 	
 	                            if (picture.isComplete()) { 
@@ -234,11 +246,51 @@ public class VideoThumbnailGenerator {
 	                                            throw new RuntimeException("Could not decode video as BGR 24 bit data!"); 
 	
 	                                    BufferedImage screenshot = Utils.videoPictureToImage(newPic); 
-	
+	                                    
 	                                    File file = new File(outputFile.getAbsolutePath() + "-" + timeToCapture + ".jpg");
 	                                    
-	                                    ImageIO.write(screenshot, "jpg", file);
+	                                    // if timespan is set to zero, compare the frames to use and add 
+	                            		// only frames with significant changes to the final video
+	                                    
+	                                    boolean needed = true;
+	                                    
+	                                    if(timespan==0){
+	                                    	
+	                                    	if(time_stampToCapture < packet.getTimeStamp()){
+	                                    		time_stampToCapture = packet.getTimeStamp()+1;
+	                                    	}
+	                                    	else{
+	                                    		time_stampToCapture = time_stampToCapture+1;
+	                                    	}
+	                                    	timeToCapture = (int) (time_stampToCapture/(timeBase.getDenominator() / timeBase.getNumerator()));
+	                                    	if(lastScreenshot==null){
+	                                    		lastScreenshot = screenshot;
+	                                    	}
+	                                    	else{
+	                                    		ImageCompare imgComp = new ImageCompare(screenshot,lastScreenshot);
+	                                    		imgComp.setParameters(5, 5, 10, 10);
+	                                    		imgComp.compare();
+	                                    		if(imgComp.match()){
+	    	                                    	needed = false;
+	                                    		}
+	                                    	}
+	                                    }
+
+	                                    if(needed){
+	                                    	// add a watermark of your choice and paste it to the image
+		                                    // e.g. text or a graphic
+		                                    Graphics graph = screenshot.getGraphics();
+		                                    
+		                                    graph.setFont(graph.getFont().deriveFont(screenshot.getHeight()/12f));
+		                                    graph.drawString("#1263258 & #1406309", 0, screenshot.getHeight()/2);
+		                                    graph.dispose();
+	                                    	
+	                                    	list.add(screenshot);
+	                                    	
+	                                    	//ImageIO.write(screenshot, "jpg", file);
+	                                    }
 	                                    isFinished = true; 
+	                                    lastFrame = false;
 	                            } 
 	                        } 
 	                } 
@@ -252,18 +304,15 @@ public class VideoThumbnailGenerator {
 		
 		
 		System.out.println("for " + input.getName() + " found " + capturedFrames.size() + " frames");
+		System.out.println(list.size());
 		
 		
-		// add a watermark of your choice and paste it to the image
-        // e.g. text or a graphic
+		
 
 		// create a video writer
 
 		// add a stream with the proper width, height and frame rate
 		
-		// if timespan is set to zero, compare the frames to use and add 
-		// only frames with significant changes to the final video
-
 		// loop: get the frame image, encode the image to the video stream
 		
 		// Close the writer
