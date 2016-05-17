@@ -7,16 +7,21 @@ package itm.video;
 
 import itm.util.ImageCompare;
 
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 import javax.imageio.ImageIO;
 
+import com.xuggle.mediatool.IMediaWriter;
+import com.xuggle.mediatool.ToolFactory;
 import com.xuggle.xuggler.Global;
+import com.xuggle.xuggler.ICodec;
 import com.xuggle.xuggler.IContainer;
 import com.xuggle.xuggler.IPacket;
 import com.xuggle.xuggler.IPixelFormat;
@@ -306,19 +311,37 @@ public class VideoThumbnailGenerator {
 		System.out.println("for " + input.getName() + " found " + capturedFrames.size() + " frames");
 		System.out.println(list.size());
 		
-		
-		
 
 		// create a video writer
-
+		IMediaWriter writer = ToolFactory.makeWriter(outputFile.getAbsolutePath());
+		
+		int outputLengthInSec = list.size();
+		//since only 1 frame per second
+		IRational frameRate = IRational.make(1, 1);
 		// add a stream with the proper width, height and frame rate
+		writer.addVideoStream(0, 0, ICodec.ID.CODEC_ID_MPEG4, frameRate, list.get(0).getWidth() /2, list.get(0).getHeight()/2);
+		//writer.addListener(ToolFactory.makeDebugListener());
 		
+		long startTime = System.nanoTime();
 		// loop: get the frame image, encode the image to the video stream
+		for (int i = 0; i < outputLengthInSec; i++) {
 		
-		// Close the writer
+		BufferedImage imageToWrite = list.get(i);
+		//make sure it is BufferedImage.TYPE_3BYTE_BGR?????
+		
+		writer.encodeVideo(0, imageToWrite, System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
+		
+		Thread.sleep((long) (1000));
 
+	  }
+
+	// Close the writer
+	  writer.close();
+	
 		return outputFile;
 	}
+	
+
 
 	/**
 	 * Main method. Parses the commandline parameters and prints usage
