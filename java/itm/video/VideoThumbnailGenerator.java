@@ -26,6 +26,7 @@ import com.xuggle.xuggler.IContainer;
 import com.xuggle.xuggler.IPacket;
 import com.xuggle.xuggler.IPixelFormat;
 import com.xuggle.xuggler.IRational;
+import com.xuggle.xuggler.IStream;
 import com.xuggle.xuggler.IStreamCoder;
 import com.xuggle.xuggler.IVideoPicture;
 import com.xuggle.xuggler.IVideoResampler;
@@ -142,21 +143,22 @@ public class VideoThumbnailGenerator {
 		//***********************************************
         IContainer container = IContainer.make(); 
         container.open(input.getAbsolutePath(), IContainer.Type.READ, null);
-        //System.out.println("container.getDuration(): " + container.getDuration());
+        
         long durationInMs = container.getDuration();
 		if (durationInMs == Global.NO_PTS) {
 			throw new RuntimeException("Duration of container is unknown");
 		}
-        long durationInS = durationInMs/1000000;
         
         int numOfStreams = container.getNumStreams(); 
+        
         // and iterate through the streams to find the first video stream 
         int theVidID = -1;
+        
         boolean vidIDFound = false;
         IStreamCoder theVidCoder = null; 
-        for (int i = 0; i < numOfStreams; i++) { 
-                IStreamCoder coder = container.getStream(i).getStreamCoder(); 
 
+        for (int i = 0; i < numOfStreams; i++) { 
+                IStreamCoder coder = container.getStream(i).getStreamCoder();
                 if (coder.getCodecType() == com.xuggle.xuggler.ICodec.Type.CODEC_TYPE_VIDEO) { 
                 	theVidID = i; 
                 	theVidCoder = coder; 
@@ -173,7 +175,8 @@ public class VideoThumbnailGenerator {
         if (theVidCoder.open() < 0) 
                 throw new RuntimeException("Could not open video decoder!"); 
 
-        IVideoResampler resampler = null; 
+        IVideoResampler resampler = null;
+        
 		// if this stream is not in BGR24, we're going to need to
 		// convert it.  The VideoResampler does that for us.
         if (theVidCoder.getPixelType() != IPixelFormat.Type.BGR24) { 
@@ -186,130 +189,98 @@ public class VideoThumbnailGenerator {
             if (resampler == null) 
             	throw new RuntimeException("No color space!"); 
         } 
-
-
-        
-        IRational timeBase = container.getStream(theVidID).getTimeBase(); 
-
-        //System.out.println("Timebase " + timeBase.toString()); 
-        
-        ArrayList<IVideoPicture> capturedFrames = new ArrayList<IVideoPicture>();
         
         long time_stampToCapture = 0;
-        boolean lastFrame = false;
         BufferedImage lastScreenshot = null;
-        
         ArrayList<BufferedImage> list = new ArrayList<BufferedImage>();
-        //int counter = 0;
-        for (int timeToCapture = 0; timeToCapture < durationInS && !lastFrame; timeToCapture = timeToCapture + timespan){
-        	//System.out.println(counter++);
-        	lastFrame=true;
+        long step;
+        
+    	if(timespan!=0){
+    		step = timespan*1000000;
+    	}
+    	else{
+    		step = 100000;
+    	}
+        
+        IPacket packet = IPacket.make();
+
+        EXTRACTINGFRAMES: while(container.readNextPacket(packet) >= 0 ) { 
         	
-        	if(timespan!=0){
-        		time_stampToCapture = (timeBase.getDenominator() / timeBase.getNumerator()) * timeToCapture; 
-        	}
-	        
-	        
-	        //long target = container.getStartTime() + timeStampOffset; 
-	
-	        container.seekKeyFrame(theVidID, time_stampToCapture, 0); 
-	        
-	        boolean isFinished = false; 
-	        
-	        IPacket packet = IPacket.make(); 
-	        while(container.readNextPacket(packet) >= 0 && !isFinished ) { 
-	        	
-	
-	                if (packet.getStreamIndex() == theVidID) { 
-	                	
-	            		IVideoPicture picture = IVideoPicture.make(theVidCoder.getPixelType(), 
-	                    											theVidCoder.getWidth(),
-	                    											theVidCoder.getHeight()); 
-	                    int offset = 0; 
-	                    while (offset < packet.getSize()) { 
-	                    	
-	
-	                            int bytesDecoded = theVidCoder.decodeVideo(picture, packet, offset); 
-	                            if (bytesDecoded < 0) { 
-	                                    System.err.println("No video was decoded in the packet!"); 
-	                            }
-	                            offset += bytesDecoded; 
-	
-	                            if (picture.isComplete()) { 
-	
-	                                    IVideoPicture newPic = picture; 
-	
-	                                    if (resampler != null) { 
-	                                        newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 
-	                                        							picture.getWidth(),
-	                                        							picture.getHeight()); 
-	                                        if (resampler.resample(newPic, picture) < 0) 
-	                                                throw new RuntimeException("Could not resample video!"); 
-	                                    } 
-	
-	                                    if (newPic.getPixelType() != IPixelFormat.Type.BGR24) 
-	                                            throw new RuntimeException("Could not decode video as BGR 24 bit data!"); 
-	
-	                                    BufferedImage screenshot = Utils.videoPictureToImage(newPic); 
-	                                    
-	                                    File file = new File(outputFile.getAbsolutePath() + "-" + timeToCapture + ".jpg");
-	                                    
-	                                    // if timespan is set to zero, compare the frames to use and add 
-	                            		// only frames with significant changes to the final video
-	                                    
-	                                    boolean needed = true;
-	                                    
-	                                    if(timespan==0){
-	                                    	
-	                                    	if(time_stampToCapture < packet.getTimeStamp()){
-	                                    		time_stampToCapture = packet.getTimeStamp()+1;
-	                                    	}
-	                                    	else{
-	                                    		time_stampToCapture = time_stampToCapture+1;
-	                                    	}
-	                                    	timeToCapture = (int) (time_stampToCapture/(timeBase.getDenominator() / timeBase.getNumerator()));
-	                                    	if(lastScreenshot==null){
-	                                    		lastScreenshot = screenshot;
-	                                    	}
-	                                    	else{
-	                                    		ImageCompare imgComp = new ImageCompare(screenshot,lastScreenshot);
-	                                    		imgComp.setParameters(5, 5, 10, 10);
-	                                    		imgComp.compare();
-	                                    		if(imgComp.match()){
-	    	                                    	needed = false;
-	                                    		}
-	                                    	}
-	                                    }
+            if (packet.getStreamIndex() == theVidID) { 
+            	
+        		IVideoPicture picture = IVideoPicture.make(theVidCoder.getPixelType(), 
+                											theVidCoder.getWidth(),
+                											theVidCoder.getHeight()); 
+        		int offset = 0;
+				while (offset < packet.getSize()) {
+					int bytesDecoded = theVidCoder.decodeVideo(picture, packet, offset); 
+                    if (bytesDecoded < 0) { 
+                            System.err.println("No video was decoded in the packet!"); 
+                    }
+                    offset += bytesDecoded; 
+					if (picture.isComplete()) {
+						IVideoPicture newPic = picture;
+						
+						if (resampler != null) { 
+                            newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 
+                            							picture.getWidth(),
+                            							picture.getHeight()); 
+                            if (resampler.resample(newPic, picture) < 0) 
+                                    throw new RuntimeException("Could not resample video!"); 
+                        } 
 
-	                                    if(needed){
-	                                    	// add a watermark of your choice and paste it to the image
-		                                    // e.g. text or a graphic
-		                                    Graphics graph = screenshot.getGraphics();
-		                                    
-		                                    graph.setFont(graph.getFont().deriveFont(screenshot.getHeight()/12f));
-		                                    graph.drawString("#1263258 & #1406309", 0, screenshot.getHeight()/2);
-		                                    graph.dispose();
-	                                    	
-	                                    	list.add(screenshot);
-	                                    	
-	                                    	//ImageIO.write(screenshot, "jpg", file);
-	                                    }
-	                                    isFinished = true; 
-	                                    lastFrame = false;
-	                            } 
-	                        } 
-	                } 
-	        } 
-	        
-        }
-
+                        if (newPic.getPixelType() != IPixelFormat.Type.BGR24) 
+                                throw new RuntimeException("Could not decode video as BGR 24 bit data!");
+                        
+						long timestamp = picture.getTimeStamp();
+						if (timestamp > time_stampToCapture) {
+		
+							BufferedImage screenshot = Utils
+									.videoPictureToImage(newPic);
+							
+							// if timespan is set to zero, compare the frames to use and add 
+			        		// only frames with significant changes to the final video
+							boolean needed = true;
+							if(timespan==0){
+			                	if(lastScreenshot==null){
+			                		lastScreenshot = screenshot;
+			                	}
+			                	else{
+			                		ImageCompare imgComp = new ImageCompare(screenshot,lastScreenshot);
+			                		imgComp.setParameters(13, 13, 10, 9);
+			                		imgComp.compare();
+			                		if(imgComp.match()){
+			                        	needed = false;
+			                		}
+			                		else{
+			                			lastScreenshot = screenshot;
+			                		}
+			                	}
+			                }
+							if(needed){
+								// add a watermark of your choice and paste it to the image
+			                    // e.g. text or a graphic
+								Graphics graph = screenshot.getGraphics();
+			                    
+			                    graph.setFont(graph.getFont().deriveFont(screenshot.getHeight()/12f));
+			                    graph.drawString("#1263258 & #1406309", 0, screenshot.getHeight()/2);
+			                    graph.dispose();
+			                	
+			                	list.add(screenshot);
+							}
+							time_stampToCapture += step;
+						}
+						if (timestamp > durationInMs) {
+							break EXTRACTINGFRAMES;
+						}
+					}
+				} 		      
+            } 
+        } 
+        
     	theVidCoder.close(); 
     	container.close(); 
 		
-		
-		
-		System.out.println("for " + input.getName() + " found " + capturedFrames.size() + " frames");
-		System.out.println(list.size());
 		
 
 		// create a video writer
