@@ -8,9 +8,16 @@ package itm.image;
 import itm.model.ImageMedia;
 import itm.model.MediaFactory;
 
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 
 /**
     This class reads images of various formats and stores some basic image meta data to text files.
@@ -107,25 +114,66 @@ public class ImageMetadataGenerator {
         // ***************************************************************
         //  Fill in your code here!
         // ***************************************************************
+ImageReader reader;
         
         // load the input image
-       
-        // set width and height of the image  
-
+        int i = input.getName().lastIndexOf('.');
+        String inputFormat = input.getName().substring(i+1);
+        
+        Iterator<ImageReader> readerType = ImageIO.getImageReadersByFormatName(inputFormat);
+        reader = readerType.next();
+        
+        BufferedImage image = null;
+        
+        ImageInputStream imageInput = ImageIO.createImageInputStream(input);
+        reader.setInput(imageInput, true);
+        
+        image = reader.read(0);
+        
+        // set width and height of the image
+        int width = image.getWidth();
+        media.setWidth(width);
+        int height = image.getHeight();
+        media.setHeight(height);
+        
         // add a tag "image" to the media
-
+        media.addTag("image");
+        
         // add a tag corresponding to the filename extension of the file to the media 
+        media.addTag(inputFormat);
         
         // set orientation
-
+        if(height>width){
+        	media.setOrientation(ImageMedia.ORIENTATION_PORTRAIT);
+        }
+        else{
+        	media.setOrientation(ImageMedia.ORIENTATION_LANDSCAPE);
+        }
         // if there is a colormodel:
-        // set color space type
-        // set pixel size
-        // set transparency
-        // set number of (color) components        
+        if(image.getColorModel() != null){
+        	ColorModel cMod = image.getColorModel();
+        	// set color space type
+        	int colSpace = cMod.getColorSpace().getType();
+        	media.setColorSpaceType(colSpace);
+        	// set pixel size
+        	int pixelSize = cMod.getPixelSize();
+        	media.setPixelSize(pixelSize);
+        	// set transparency
+        	int trans = cMod.getTransparency();
+        	media.setTransparency(trans);
+        	// set number of (color) components
+        	int nColCom = cMod.getNumColorComponents();
+        	media.setColorNumber(nColCom);
+        	
+        	// set number of components
+        	int nComp = cMod.getNumComponents();
+        	media.setComponentsNumber(nComp);
+        }
+        
 
         // store meta data
-
+        
+        media.writeToFile(outputFile);
         return media;
     }
     

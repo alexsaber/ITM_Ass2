@@ -27,8 +27,89 @@ public class ImageMedia extends AbstractMedia {
 
 	// add required properties (scope: protected!)
 
+
+    protected int width;
+    
+    protected int height;
+    
+    protected int componentsNumber;
+    
+    protected int colorNumber;
+    
+    protected int transparency;
+    
+    protected int pixelSize;
+    
+    protected int colorSpaceType;
+    
+    protected int orientation;
+	
 	// add get/set methods for the properties
 
+    public int getWidth() {
+		return width;
+	}
+
+	public void setWidth(int width) {
+		this.width = width;
+	}
+
+	public int getHeight() {
+		return height;
+	}
+
+	public void setHeight(int height) {
+		this.height = height;
+	}
+
+	public int getComponentsNumber() {
+		return componentsNumber;
+	}
+
+	public void setComponentsNumber(int componentsNumber) {
+		this.componentsNumber = componentsNumber;
+	}
+
+	public int getColorNumber() {
+		return colorNumber;
+	}
+
+	public void setColorNumber(int colorNumber) {
+		this.colorNumber = colorNumber;
+	}
+
+	public int getTransparency() {
+		return transparency;
+	}
+
+	public void setTransparency(int transparency) {
+		this.transparency = transparency;
+	}
+
+	public int getPixelSize() {
+		return pixelSize;
+	}
+
+	public void setPixelSize(int pixelSize) {
+		this.pixelSize = pixelSize;
+	}
+
+	public int getColorSpaceType() {
+		return colorSpaceType;
+	}
+
+	public void setColorSpaceType(int colorSpaceType) {
+		this.colorSpaceType = colorSpaceType;
+	}
+
+	public int getOrientation() {
+		return orientation;
+	}
+
+	public void setOrientation(int orientation) {
+		this.orientation = orientation;
+	}
+	
 	/**
 	 * Constructor.
 	 */
@@ -125,7 +206,15 @@ public class ImageMedia extends AbstractMedia {
 		// ***************************************************************
 
 		// print properties
+		out.println("width: " + getWidth());
+        out.println("height: " + getHeight());
+        out.println("numComponents: " + getComponentsNumber());
+        out.println("numColorComponents: " + getColorNumber());
 
+        out.println("transparency: " + getTransparency());
+        out.println("pixelSize: " + getPixelSize());
+        out.println("orientation: " + getOrientation());
+        out.println("colorSpaceType: " + serializeCSType(getColorSpaceType()));
 		return data.getBuffer();
 	}
 
@@ -144,9 +233,40 @@ public class ImageMedia extends AbstractMedia {
 			// ***************************************************************
 			// Fill in your code here!
 			// ***************************************************************
-
+			int i;
 			// read and set properties
-
+			if(line.startsWith("width")){
+        		i = Integer.parseInt(line.substring("width: ".length()));
+        		setWidth(i);
+        	}
+        	if(line.startsWith("height")){
+        		i = Integer.parseInt(line.substring("height: ".length()));
+        		setHeight(i);
+        	}
+        	if(line.startsWith("numComponents")){
+        		i = Integer.parseInt(line.substring("numComponents: ".length()));
+        		setComponentsNumber(i);
+        	}
+        	if(line.startsWith("numColorComponents")){
+        		i = Integer.parseInt(line.substring("numColorComponents: ".length()));
+        		setColorNumber(i);
+        	}
+        	if(line.startsWith("transparency")){
+        		i = Integer.parseInt(line.substring("transparency: ".length()));
+        		setTransparency(i);
+        	}
+        	if(line.startsWith("pixelSize")){
+        		i = Integer.parseInt(line.substring("pixelSize: ".length()));
+        		setPixelSize(i);
+        	}
+        	if(line.startsWith("orientation")){
+        		i = Integer.parseInt(line.substring("orientation: ".length()));
+        		setOrientation(i);
+        	}
+        	if(line.startsWith("colorSpaceType")){
+        		i = Integer.parseInt(line.substring("colorSpaceType: ".length()));
+        		setColorSpaceType(i);
+        	}
 		}
 	}
 }

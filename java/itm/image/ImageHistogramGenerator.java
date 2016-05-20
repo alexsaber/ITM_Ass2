@@ -6,9 +6,20 @@ package itm.image;
 *******************************************************************************/
 
 
+import itm.util.Histogram;
+
+import java.awt.Color;
+import java.awt.color.ColorSpace;
+import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 
 /**
   * This class creates color and grayscale histograms for various images.
@@ -90,25 +101,87 @@ public class ImageHistogramGenerator {
 		File outputFile = new File( output, input.getName() + ".hist.png" );
 		
        
-	// ***************************************************************
+		// ***************************************************************
         //  Fill in your code here!
         // ***************************************************************
-
+		
+		ImageReader reader;
+		
         // load the input image
-		
+		int i = input.getName().lastIndexOf('.');
+        String inputFormat = input.getName().substring(i+1);
+        
+        Iterator<ImageReader> readerType = ImageIO.getImageReadersByFormatName(inputFormat);
+        reader = readerType.next();
+        
+        BufferedImage image = null;
+        
+        ImageInputStream imageInput = ImageIO.createImageInputStream(input);
+        reader.setInput(imageInput, true);
+        
+        image = reader.read(0);
 		// get the color model of the image and the amount of color components
-		
+		ColorModel colmod = image.getColorModel();
+		int numColorComp = colmod.getNumColorComponents();
 		// initiate a Histogram[color components] [bins]
+		Histogram hist = new Histogram(numColorComp,bins);
 		
 		// create a histogram array histArray[color components][bins]
-		
+		int[][] histArray = new int[numColorComp][bins];
+		int width = image.getWidth();
+		int height = image.getHeight();
 		// read the pixel values and extract the color information
+		if(colmod.getColorSpace().getType() == ColorSpace.TYPE_GRAY){
+			for(int countWidth = 0; countWidth < width; ++countWidth){
+				for(int countHeight = 0; countHeight < height; ++countHeight){
+					 Color col = new Color(image.getRGB(countWidth, countHeight));
+					 if(col.getGreen()/255.0*bins<bins){
+						 histArray[0][(int) (col.getGreen()/255.0*bins)]++;
+					 }
+					 else{
+						 histArray[0][bins-1]++;
+					 }
+					 
+				}
+			}
+		}
+		else if(colmod.getColorSpace().getType() == ColorSpace.TYPE_RGB){
+			for(int countWidth = 0; countWidth < width; ++countWidth){
+				for(int countHeight = 0; countHeight < height; ++countHeight){
+					 Color col = new Color(image.getRGB(countWidth, countHeight));
+
+					 if(col.getRed()/255.0*bins<bins){
+						 histArray[0][(int) (col.getRed()/255.0*bins)]++;
+					 }
+					 else{
+						 histArray[0][bins-1]++;
+					 }
+					 if(col.getGreen()/255.0*bins<bins){
+						 histArray[1][(int) (col.getGreen()/255.0*bins)]++;
+					 }
+					 else{
+						 histArray[1][bins-1]++;
+					 }
+					 if(col.getBlue()/255.0*bins<bins){
+						 histArray[2][(int) (col.getBlue()/255.0*bins)]++;
+					 }
+					 else{
+						 histArray[2][bins-1]++;
+					 }
+				}
+			}
+		}
+		else{
+			throw new IllegalArgumentException("The image has an incompatible Colorspacetype.");
+		}
 		
 		// fill the array setHistogram(histArray)
-		
+		hist.setHistogram(histArray);
 		// plot the histogram, try different dimensions for better visualization
-		
-        // encode and save the image as png 
+		BufferedImage buffy = hist.plotHistogram(1200, 400);
+        // encode and save the image as png
+        ImageIO.write(buffy, "png", outputFile);
+	
         return outputFile;
     }
     
