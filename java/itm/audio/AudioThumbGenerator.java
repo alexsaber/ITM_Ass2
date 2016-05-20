@@ -68,7 +68,7 @@ public class AudioThumbGenerator {
 		if (input.isDirectory()) {
 			File[] files = input.listFiles();
 			for (File f : files) {
-
+				
 				String ext = f.getName().substring(
 						f.getName().lastIndexOf(".") + 1).toLowerCase();
 				if (ext.equals("wav") || ext.equals("mp3") || ext.equals("ogg")) {
@@ -156,15 +156,17 @@ public class AudioThumbGenerator {
 		decodedAudioInput = AudioSystem.getAudioInputStream(decodedFormat, audioInput);
 		
 		// cut the audio data in the stream to a given length
-		
 		long dataThumb = thumbNailLength * (int)decodedFormat.getFrameRate();
 		
 		Thumbnail  =  new AudioInputStream(decodedAudioInput, decodedFormat, dataThumb);
 		
 		// save the acoustic thumbnail as WAV file
-		
 		WaveFileWriter wavWriter = new WaveFileWriter();
 		wavWriter.write(Thumbnail, AudioFileFormat.Type.WAVE, outputFile);
+		
+		//audioInput.close();
+		//decodedAudioInput.close();
+		//Thumbnail.close();
 
 		return outputFile;
 	}

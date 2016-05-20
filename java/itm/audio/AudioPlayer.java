@@ -126,30 +126,22 @@ public class AudioPlayer {
 		
 		//source http://www.codejava.net/coding/how-to-play-back-audio-in-java-with-examples
 		AudioFormat format = audio.getFormat();
-		
-		// get audio format
 		DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-		// get a source data line
 		SourceDataLine audioLine = (SourceDataLine) AudioSystem.getLine(info);
 		audioLine.open(format);
-		 
 		audioLine.start();
-		
-		// read samples from audio and write them to the data line 
+
 		int BUFFER_SIZE = 4096;
-		
 		byte[] bytesBuffer = new byte[BUFFER_SIZE];
 		int bytesRead = -1;
-		
+		//read data
 		while ((bytesRead = audio.read(bytesBuffer)) != -1) {
 		    audioLine.write(bytesBuffer, 0, bytesRead);
 		}
 
-		// properly close the line!
+		// close everything
 		audioLine.drain();
-		 
 		audioLine.close();
-		 
 		audio.close();
 	}
 

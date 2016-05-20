@@ -1,5 +1,7 @@
 package itm.image;
 
+import java.awt.image.BufferedImage;
+
 /*******************************************************************************
     This file is part of the ITM course 2016
     (c) University of Vienna 2009-2016
@@ -9,6 +11,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
+import javax.imageio.stream.FileImageOutputStream;
+
 /**
     This class converts images into various image formats (BMP, PNG, ...).
     It can be called with 3 parameters, an input filename/directory, an output directory and a target format.
@@ -16,11 +25,13 @@ import java.util.ArrayList;
     
     If the input file/dir or the output directory do not exist, an exception is thrown.
 */
-public class ImageConverter {
+public class ImageConverter 
+{
 
     public final static String BMP = "bmp";
     public final static String PNG = "png";
     public final static String JPEG = "jpeg";
+    public final static String JPG = "jpg";
    
     /**
         Constructor.
@@ -46,6 +57,7 @@ public class ImageConverter {
             throw new IOException( output + " is not a directory!" );
         if ( ( ! targetFormat.equalsIgnoreCase( BMP ) ) &&
              ( ! targetFormat.equalsIgnoreCase( PNG ) ) &&
+             ( ! targetFormat.equalsIgnoreCase( JPG ) ) &&
              ( ! targetFormat.equalsIgnoreCase( JPEG ) ) )
             throw new IllegalArgumentException( "Unknown target format: " + targetFormat );
              
@@ -80,7 +92,7 @@ public class ImageConverter {
         @param input a reference to the input image
         @param output a reference to the output directory
       	@param targetFormat bmp, png or jpeg
-      	@param quality a number between 0 (minimum quality) and 1 (max quality)  
+      	@param quality a number between 0 (minimum quality) and 1 (max quality)
     */
 	protected File processImage( File input, File output, String targetFormat, float quality ) throws IOException, IllegalArgumentException
     {
@@ -94,23 +106,55 @@ public class ImageConverter {
             throw new IOException( output + " is not a directory!" );
         if ( ( ! targetFormat.equalsIgnoreCase( BMP ) ) &&
                 ( ! targetFormat.equalsIgnoreCase( PNG ) ) &&
+                ( ! targetFormat.equalsIgnoreCase( JPG ) ) &&
                 ( ! targetFormat.equalsIgnoreCase( JPEG ) ) )
                throw new IllegalArgumentException( "Unknown target format: " + targetFormat );
 
         File outputFile = null;
         
-        // ***************************************************************
-        //  Fill in your code here!
-        // ***************************************************************
+        
+        
+        
+        BufferedImage input_img = null;
+        try {
+        	
+        	//reference: http://docs.oracle.com/javase/tutorial/2d/images/index.html
+        	// load the input image
+        	input_img = ImageIO.read(input);
+        	
+        	outputFile = new File (output.getAbsoluteFile() + "\\" + input.getName() + "." + targetFormat);
+        	
+        	System.out.println("Output file renamed to " + outputFile.getAbsolutePath());
+        	
+        	// encode and save the image 
+        	//reference for jpg converting --> http://stackoverflow.com/questions/17108234/setting-jpg-compression-level-with-imageio-in-java
+        	if(targetFormat.equalsIgnoreCase( JPEG ) || targetFormat.equalsIgnoreCase( JPG )){
+        		JPEGImageWriteParam jpegParams = new JPEGImageWriteParam(null);
+                jpegParams.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                jpegParams.setCompressionQuality(quality);
+                
+                 final ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
+        	     // specifies where the jpg image has to be written
+        	     writer.setOutput(new FileImageOutputStream(outputFile));
+        	
+        	     // writes the file with given compression level 
+        	     // from your JPEGImageWriteParam instance
+        	     writer.write(null, new IIOImage(input_img, null, null), jpegParams);
+        	}else{
+        		boolean result = ImageIO.write(input_img, targetFormat, outputFile);
+        		//TODO thow an exception
+        	}
 
-        // load the input image
+            
+        } catch (IOException e) {
+        }
        
-        // encode and save the image 
+        
+        
 
         return outputFile;
     }
-    
-        
+     
     /**
         Main method. Parses the commandline parameters and prints usage information if required.
     */
@@ -129,8 +173,9 @@ public class ImageConverter {
         File fo = new File( args[1] );
         String targetFormat = args[2];
         float quality = 1.0f;
-        if ( args.length > 3 )
+        if ( args.length > 3 ) {
         	quality = Float.parseFloat( args[3] );
+        }
 
         System.out.println( "converting " + fi.getAbsolutePath() + " to " + fo.getAbsolutePath() );
         ImageConverter converter = new ImageConverter();

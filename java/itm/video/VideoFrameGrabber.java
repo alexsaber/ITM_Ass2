@@ -153,7 +153,7 @@ public class VideoFrameGrabber {
         
         IPacket packet = IPacket.make();
         //read every packet until the needed one will be found
-		END: while (container.readNextPacket(packet) >= 0) {
+        EXTRACTINGFRAMES: while (container.readNextPacket(packet) >= 0) {
 			//if it is out stream
 			if (packet.getStreamIndex() == theVidID) {
 				IVideoPicture frame = IVideoPicture.make(
@@ -175,7 +175,7 @@ public class VideoFrameGrabber {
 							BufferedImage img = Utils.videoPictureToImage(frame);
 							ImageIO.write(img, "jpg", outputFile);
 							//since only one picture needs to be stored, break out of the outer while
-							break END;
+							break EXTRACTINGFRAMES;
 						}
 					}
 				}

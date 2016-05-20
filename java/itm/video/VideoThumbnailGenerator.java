@@ -137,7 +137,6 @@ public class VideoThumbnailGenerator {
 
 		// extract frames from input video
 		
-		
 		//**********************************************
 		//source: https://gist.github.com/tuler/5713172
 		//***********************************************
@@ -167,29 +166,11 @@ public class VideoThumbnailGenerator {
                 } 
         } 
 
-
 		if (vidIDFound == false)
-		   throw new RuntimeException( "No video stream in the file!");
-
-			
+		   throw new RuntimeException( "No video stream in the file!");		
         if (theVidCoder.open() < 0) 
                 throw new RuntimeException("Could not open video decoder!"); 
 
-        IVideoResampler resampler = null;
-        
-		// if this stream is not in BGR24, we're going to need to
-		// convert it.  The VideoResampler does that for us.
-        if (theVidCoder.getPixelType() != IPixelFormat.Type.BGR24) { 
-        	resampler = IVideoResampler.make(theVidCoder.getWidth(), 
-						            		 theVidCoder.getHeight(), 
-						            		 IPixelFormat.Type.BGR24, 
-						            		 theVidCoder.getWidth(), 
-						            		 theVidCoder.getHeight(), 
-						            		 theVidCoder.getPixelType()); 
-            if (resampler == null) 
-            	throw new RuntimeException("No color space!"); 
-        } 
-        
         long time_stampToCapture = 0;
         BufferedImage lastScreenshot = null;
         ArrayList<BufferedImage> list = new ArrayList<BufferedImage>();
@@ -219,69 +200,55 @@ public class VideoThumbnailGenerator {
                     }
                     offset += bytesDecoded; 
 					if (picture.isComplete()) {
-						IVideoPicture newPic = picture;
+					long timestamp = picture.getTimeStamp();
+					if (timestamp > time_stampToCapture) {
+	
+						BufferedImage screenshot = Utils.videoPictureToImage(picture);
 						
-						if (resampler != null) { 
-                            newPic = IVideoPicture.make(resampler.getOutputPixelFormat(), 
-                            							picture.getWidth(),
-                            							picture.getHeight()); 
-                            if (resampler.resample(newPic, picture) < 0) 
-                                    throw new RuntimeException("Could not resample video!"); 
-                        } 
-
-                        if (newPic.getPixelType() != IPixelFormat.Type.BGR24) 
-                                throw new RuntimeException("Could not decode video as BGR 24 bit data!");
-                        
-						long timestamp = picture.getTimeStamp();
-						if (timestamp > time_stampToCapture) {
-		
-							BufferedImage screenshot = Utils
-									.videoPictureToImage(newPic);
-							
-							// if timespan is set to zero, compare the frames to use and add 
-			        		// only frames with significant changes to the final video
-							boolean needed = true;
-							if(timespan==0){
-			                	if(lastScreenshot==null){
-			                		lastScreenshot = screenshot;
-			                	}
-			                	else{
-			                		ImageCompare imgComp = new ImageCompare(screenshot,lastScreenshot);
-			                		imgComp.setParameters(13, 13, 10, 9);
-			                		imgComp.compare();
-			                		if(imgComp.match()){
-			                        	needed = false;
-			                		}
-			                		else{
-			                			lastScreenshot = screenshot;
-			                		}
-			                	}
-			                }
-							if(needed){
-								// add a watermark of your choice and paste it to the image
-			                    // e.g. text or a graphic
-								Graphics graph = screenshot.getGraphics();
-			                    
-			                    graph.setFont(graph.getFont().deriveFont(screenshot.getHeight()/12f));
-			                    graph.drawString("#1263258 & #1406309", 0, screenshot.getHeight()/2);
-			                    graph.dispose();
-			                	
-			                	list.add(screenshot);
-							}
-							time_stampToCapture += step;
+						// if timespan is set to zero, compare the frames to use and add 
+		        		// only frames with significant changes to the final video
+						boolean needed = true;
+						if(timespan==0){
+		                	if(lastScreenshot==null){
+		                		lastScreenshot = screenshot;
+		                	}
+		                	else{
+		                		ImageCompare imgComp = new ImageCompare(screenshot,lastScreenshot);
+		                		imgComp.setParameters(13, 13, 10, 9);
+		                		imgComp.compare();
+		                		if(imgComp.match()){
+		                        	needed = false;
+		                		}
+		                		else{
+		                			lastScreenshot = screenshot;
+		                		}
+		                	}
+		                }
+						if(needed){
+							// add a watermark of your choice and paste it to the image
+		                    // e.g. text or a graphic
+							Graphics graph = screenshot.getGraphics();
+		                    
+		                    graph.setFont(graph.getFont().deriveFont(screenshot.getHeight()/12f));
+		                    graph.drawString("#1263258 & #1406309", 0, screenshot.getHeight()/2);
+		                    graph.dispose();
+		                	
+		                	list.add(screenshot);
+						}
+						time_stampToCapture += step;
 						}
 						if (timestamp > durationInMs) {
 							break EXTRACTINGFRAMES;
 						}
 					}
 				} 		      
-            } 
-        } 
-        
+		    } 
+		} 
+		    
     	theVidCoder.close(); 
     	container.close(); 
 		
-		
+		System.out.println("for " + outputFile.getName() + " found " + list.size() + " frames" );
 
 		// create a video writer
 		IMediaWriter writer = ToolFactory.makeWriter(outputFile.getAbsolutePath());
@@ -291,24 +258,18 @@ public class VideoThumbnailGenerator {
 		IRational frameRate = IRational.make(1, 1);
 		// add a stream with the proper width, height and frame rate
 		writer.addVideoStream(0, 0, ICodec.ID.CODEC_ID_MPEG4, frameRate, list.get(0).getWidth() /2, list.get(0).getHeight()/2);
-		//writer.addListener(ToolFactory.makeDebugListener());
 		
 		long startTime = System.nanoTime();
 		// loop: get the frame image, encode the image to the video stream
 		for (int i = 0; i < outputLengthInSec; i++) {
-		
-		BufferedImage imageToWrite = list.get(i);
-		//make sure it is BufferedImage.TYPE_3BYTE_BGR?????
-		
-		writer.encodeVideo(0, imageToWrite, System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
-		
-		Thread.sleep((long) (1000));
+			BufferedImage imageToWrite = list.get(i);
+			writer.encodeVideo(0, imageToWrite, System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
+			Thread.sleep((long) (1000));
+		}
 
-	  }
+		// Close the writer
+		writer.close();
 
-	// Close the writer
-	  writer.close();
-	
 		return outputFile;
 	}
 	
